@@ -174,6 +174,9 @@ A simple button that can display an image and/or a label.
 
 If `flatten` is `true` all opaque pixels of the icon will have the color `color`.
 
+The `icon` may specify a base64-encoded image (rather than a filename) by having
+a `base64:` prefix before the encoded data.
+
 #### Recent Window (requires X11)
 
 Displays the icon of a recently used window/application. Pressing the button

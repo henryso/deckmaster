@@ -3,7 +3,12 @@ package main
 import (
 	"image"
 	"image/color"
+	"strings"
 	"time"
+)
+
+const (
+	base64Prefix = "base64:"
 )
 
 // ButtonWidget is a simple widget displaying an icon and/or label.
@@ -53,13 +58,22 @@ func NewButtonWidget(bw *BaseWidget, opts WidgetConfig) (*ButtonWidget, error) {
 
 // LoadImage loads an image from disk.
 func (w *ButtonWidget) LoadImage(path string) error {
-	path, err := expandPath(w.base, path)
-	if err != nil {
-		return err
-	}
-	icon, err := loadImage(path)
-	if err != nil {
-		return err
+	var icon image.Image
+	var err error
+	if strings.HasPrefix(path, base64Prefix) {
+		icon, err = loadBase64Image(path[len(base64Prefix):])
+		if err != nil {
+			return err
+		}
+	} else {
+		path, err = expandPath(w.base, path)
+		if err != nil {
+			return err
+		}
+		icon, err = loadImage(path)
+		if err != nil {
+			return err
+		}
 	}
 
 	w.SetImage(icon)

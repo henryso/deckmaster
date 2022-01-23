@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/color"
@@ -173,6 +175,16 @@ func loadThemeImage(theme string, img string) (image.Image, error) {
 		return nil, err
 	}
 	return loadImage(abs)
+}
+
+func loadBase64Image(encodedData string) (image.Image, error) {
+	data, err := base64.StdEncoding.DecodeString(encodedData)
+	if err != nil {
+		return nil, err
+	}
+	reader := bytes.NewReader(data)
+	icon, _, err := image.Decode(reader)
+	return icon, err
 }
 
 func flattenImage(img image.Image, clr color.Color) image.Image {
