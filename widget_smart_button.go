@@ -11,7 +11,9 @@ import (
 )
 
 var (
-	substitutionRE = regexp.MustCompile(`\${((\\.|.)+?)(:-((\\.|.)*?))?}`)
+	substitutionRE        = regexp.MustCompile(`\${((\\.|.)+?)(:-((\\.|.)*?))?}`)
+	unescapeRE            = regexp.MustCompile(`\\(.)`)
+	telemetryExpressionRE = regexp.MustCompile(`^telemetry\[((\\.|.)+?)\]$`)
 )
 
 // SmartButtonWidget is a button widget that can change dynamically.
@@ -102,6 +104,59 @@ func (d *SmartButtonBrightnessDependency) Replacement(
 	return expression, false
 }
 
+// SmartButtonTelemetryDependency is a dependency based on running a command.
+type SmartButtonTelemetryDependency struct {
+	values map[string]string
+}
+
+// NewSmartButtonTelemetryDependency returns a new SmartButtonTelemetryDependency.
+func NewSmartButtonTelemetryDependency() *SmartButtonTelemetryDependency {
+	return &SmartButtonTelemetryDependency{
+		values: make(map[string]string),
+	}
+}
+
+// IsNecessary returns whether the dependency is necessary for the template.
+func (d *SmartButtonTelemetryDependency) IsNecessary(expressions []string) bool {
+	for _, x := range expressions {
+		if match := telemetryExpressionRE.FindStringSubmatch(x); match != nil {
+			key := unescapeRE.ReplaceAllString(match[1], "$1")
+			d.values[key] = telemetry[key]
+		}
+	}
+	return len(d.values) != 0
+}
+
+// IsChanged returns true if the dependency value has changed.
+func (d *SmartButtonTelemetryDependency) IsChanged() bool {
+	changed := false
+
+	for key, value := range d.values {
+		newValue := telemetry[key]
+		if value != newValue {
+			d.values[key] = newValue
+			changed = true
+		}
+	}
+
+	return changed
+}
+
+// Replacement returns the replacement value for expression and whether it applies.
+func (d *SmartButtonTelemetryDependency) Replacement(
+	expression string,
+	defaultValue string,
+) (string, bool) {
+	if match := telemetryExpressionRE.FindStringSubmatch(expression); match != nil {
+		value := d.values[match[1]]
+		if value == "" {
+			value = defaultValue
+		}
+		return value, true
+	}
+	return expression, false
+}
+
 // NewSmartButtonWidget returns a new SmartButtonWidget.
 func NewSmartButtonWidget(bw *BaseWidget, opts WidgetConfig) (*SmartButtonWidget, error) {
 	var icon, label, fontsize, color string
@@ -142,6 +197,7 @@ func NewSmartButtonWidget(bw *BaseWidget, opts WidgetConfig) (*SmartButtonWidget
 		}
 	}
 	w.appendDependencyIfNecessary(NewSmartButtonBrightnessDependency(), expressions)
+	w.appendDependencyIfNecessary(NewSmartButtonTelemetryDependency(), expressions)
 
 	return &w, nil
 }

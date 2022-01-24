@@ -126,6 +126,12 @@ Control a specific streamdeck:
 deckmaster -device [serial number]
 ```
 
+Specify a command that produces telemetry:
+
+```bash
+deckmaster -telemetry telemetry_command]
+```
+
 ## Configuration
 
 You can find a few example configurations in the [decks](https://github.com/muesli/deckmaster/tree/master/decks)
@@ -182,7 +188,7 @@ A button that can alter its configuration dynamically.
 [keys.widget]
   id = "smartButton"
   [keys.widget.config]
-    icon = "/some/image.png" # optional
+    icon = "/some/${telemetry[icon]}.png" # optional
     label = "${brightness}" # optional
     fontsize = 10.0 # optional
     color = "#fefefe" # optional
@@ -192,14 +198,23 @@ A button that can alter its configuration dynamically.
 In the `label`, `icon`, `fontsize`, and `color`, the following substitutions
 will be made:
 
-| substitution  | gets replaced with                                        |
-| ------------- | --------------------------------------------------------- |
-| ${brightness} | the brightness of the Stream Deck                         |
+| substitution      | gets replaced with                                      |
+| ----------------- | ------------------------------------------------------- |
+| ${brightness}     | the brightness of the Stream Deck                       |
+| ${telemetry[...]} | value from telemetry                                    |
 
 If `flatten` is `true` all opaque pixels of the icon will have the color `color`.
 
 To use substitution in fontsize, enclose the value in quotes (e.g.,
-`fontsize = "${brightness}"`
+`fontsize = "${telemetry[size]}"`
+
+A default value may be specified after `:-` in the expression.  For example,
+`${telemetry[size]:-22}` will substitute `22` when there is no value for
+`telemetry[size]` or if that value is empty.
+
+Inside the substitution expression, the backslash (`\`) cancels any special
+behavior of the character that immediately follows it.  This means that if a
+single backslash is desired, it must be specified as a double backslash (`\\`).
 
 #### Recent Window (requires X11)
 
@@ -352,6 +367,15 @@ A list of available keycodes can be found here: [keycodes](https://github.com/mu
     method = "method"
     value = "value"
 ```
+
+### Telemetry
+
+If a command is specified with the `-telemetry` parameter, it will be run by
+deckmaster and the output will be interpreted as a stream of concatenated
+JSON-encoded objects with string values.  The name/value pairs from the
+JSON-encoded objects will represent a set of telemetry data points that can be
+used in the `smartButton` widget by putting `${template[...]}` substitutions in
+the label and/or icon, where the `...` is the name of the data point.
 
 ## More Decks!
 
