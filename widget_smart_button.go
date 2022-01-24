@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	substitutionRE = regexp.MustCompile(`\${((\\.|.)+?)}`)
+	substitutionRE = regexp.MustCompile(`\${((\\.|.)+?)(:-((\\.|.)*?))?}`)
 )
 
 // SmartButtonWidget is a button widget that can change dynamically.
@@ -30,7 +30,7 @@ type SmartButtonWidget struct {
 type SmartButtonDependency interface {
 	IsNecessary(expressions []string) bool
 	IsChanged() bool
-	Replacement(expression string) (string, bool)
+	Replacement(expression string, defaultValue string) (string, bool)
 }
 
 // SmartButtonDependencyBase is the base structure of a dependency.
@@ -63,7 +63,10 @@ func (d *SmartButtonDependencyBase) IsChanged() bool {
 }
 
 // Replacement returns the replacement value for expression and whether it applies.
-func (d *SmartButtonDependencyBase) Replacement(expression string) (string, bool) {
+func (d *SmartButtonDependencyBase) Replacement(
+	expression string,
+	defaultValue string,
+) (string, bool) {
 	return expression, false
 }
 
@@ -90,6 +93,7 @@ func (d *SmartButtonBrightnessDependency) IsChanged() bool {
 // Replacement returns the replacement value for expression and whether it applies.
 func (d *SmartButtonBrightnessDependency) Replacement(
 	expression string,
+	defaultValue string,
 ) (string, bool) {
 	if expression == d.toBeReplaced[0] {
 		d.brightness = *brightness
@@ -167,7 +171,7 @@ func (w *SmartButtonWidget) replaceValues(template string) string {
 		func(found string) string {
 			match := substitutionRE.FindStringSubmatch(found)
 			for _, d := range w.dependencies {
-				if r, applies := d.Replacement(match[1]); applies {
+				if r, applies := d.Replacement(match[1], match[4]); applies {
 					return r
 				}
 			}
