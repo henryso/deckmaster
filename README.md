@@ -176,8 +176,7 @@ If `flatten` is `true` all opaque pixels of the icon will have the color `color`
 
 #### Smart Button
 
-A button that can alter its label dynamically.  Takes the same configuration as
-`button`.
+A button that can alter its configuration dynamically.
 
 ```toml
 [keys.widget]
@@ -190,13 +189,17 @@ A button that can alter its label dynamically.  Takes the same configuration as
     flatten = true # optional
 ```
 
-In the `label`, the following substitutions will be made:
+In the `label`, `icon`, `fontsize`, and `color`, the following substitutions
+will be made:
 
 | substitution  | gets replaced with                                        |
 | ------------- | --------------------------------------------------------- |
 | ${brightness} | the brightness of the Stream Deck                         |
 
 If `flatten` is `true` all opaque pixels of the icon will have the color `color`.
+
+To use substitution in fontsize, enclose the value in quotes (e.g.,
+`fontsize = "${brightness}"`
 
 #### Recent Window (requires X11)
 
