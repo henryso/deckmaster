@@ -125,6 +125,9 @@ func NewWidget(dev *DeviceWrapper, base string, kc KeyConfig, bg image.Image) (W
 
 	case "weather":
 		return NewWeatherWidget(bw, kc.Widget)
+
+	case "smartButton":
+		return NewSmartButtonWidget(bw, kc.Widget)
 	}
 
 	// unknown widget ID

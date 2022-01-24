@@ -86,6 +86,10 @@ func ConfigValue(v interface{}, dst interface{}) error {
 		switch vt := v.(type) {
 		case string:
 			*d = vt
+		case int64:
+			*d = strconv.FormatInt(vt, 10)
+		case float64:
+			*d = strconv.FormatFloat(vt, 'g', -1, 64)
 		default:
 			return fmt.Errorf("unhandled type %+v for string conversion", reflect.TypeOf(vt))
 		}
