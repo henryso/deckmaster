@@ -106,7 +106,8 @@ func (d *SmartButtonBrightnessDependency) Replacement(
 
 // SmartButtonTelemetryDependency is a dependency based on running a command.
 type SmartButtonTelemetryDependency struct {
-	values map[string]string
+	values   map[string]string
+	receiver chan bool
 }
 
 // NewSmartButtonTelemetryDependency returns a new SmartButtonTelemetryDependency.
@@ -121,25 +122,23 @@ func (d *SmartButtonTelemetryDependency) IsNecessary(expressions []string) bool 
 	for _, x := range expressions {
 		if match := telemetryExpressionRE.FindStringSubmatch(x); match != nil {
 			key := unescapeRE.ReplaceAllString(match[1], "$1")
-			d.values[key] = telemetry[key]
+			d.values[key] = ""
 		}
 	}
-	return len(d.values) != 0
+	size := len(d.values)
+	isNecessary := size != 0
+	if isNecessary {
+		d.receiver = make(chan bool)
+		Telemetry <- TelemetryRead{data: d.values, receiver: d.receiver}
+		<-d.receiver
+	}
+	return isNecessary
 }
 
 // IsChanged returns true if the dependency value has changed.
 func (d *SmartButtonTelemetryDependency) IsChanged() bool {
-	changed := false
-
-	for key, value := range d.values {
-		newValue := telemetry[key]
-		if value != newValue {
-			d.values[key] = newValue
-			changed = true
-		}
-	}
-
-	return changed
+	Telemetry <- TelemetryRead{data: d.values, receiver: d.receiver}
+	return <-d.receiver
 }
 
 // Replacement returns the replacement value for expression and whether it applies.
