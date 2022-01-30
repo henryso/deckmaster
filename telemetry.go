@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sync"
+	"time"
 )
 
 // Channel for making telemetry requests.
@@ -47,39 +49,60 @@ func readTelemetry(command string) {
 		}
 	}()
 
-	cmd := exec.Command("sh", "-c", command)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		fatal(err)
-	}
+	for {
+		start := time.Now()
 
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		fatal(err)
-	}
+		fmt.Fprintf(os.Stderr, "Starting telemetry command: %v\n", command)
 
-	if err := cmd.Start(); err != nil {
-		fatal(err)
-	}
-
-	go func() {
-		decoder := json.NewDecoder(stdout)
-		for {
-			var data map[string]string
-			if err := decoder.Decode(&data); err == io.EOF {
-				break
-			} else if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-			} else {
-				Telemetry <- TelemetryWrite{data: data}
-			}
+		var err error
+		var stdout, stderr io.ReadCloser
+		cmd := exec.Command("sh", "-c", command)
+		stdout, err = cmd.StdoutPipe()
+		if err == nil {
+			stderr, err = cmd.StderrPipe()
 		}
-	}()
-
-	go func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			fmt.Fprintln(os.Stderr, scanner.Text())
+		if err == nil {
+			err = cmd.Start()
 		}
-	}()
+		if err == nil {
+			wg := sync.WaitGroup{}
+			wg.Add(2)
+
+			go func() {
+				decoder := json.NewDecoder(stdout)
+				for {
+					var data map[string]string
+					if err := decoder.Decode(&data); err == io.EOF {
+						break
+					} else if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+					} else {
+						Telemetry <- TelemetryWrite{data: data}
+					}
+				}
+				wg.Done()
+			}()
+
+			go func() {
+				scanner := bufio.NewScanner(stderr)
+				for scanner.Scan() {
+					fmt.Fprintln(os.Stderr, scanner.Text())
+				}
+				wg.Done()
+			}()
+
+			wg.Wait()
+			err = cmd.Wait()
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Telemetry command failed: %v\n", err)
+		}
+
+		if time.Since(start) < (2 * time.Minute) {
+			fmt.Fprintln(os.Stderr, "Command ended too quickly; not restarting")
+			break
+		} else {
+			fmt.Fprintln(os.Stderr, "Command ended; restarting")
+		}
+	}
 }
